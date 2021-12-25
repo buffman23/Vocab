@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="src" path="resources"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-15">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.swt.win32.win32.x86_64_3.116.0.v20210302-1107.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.swt.win32.win32.x86_64_3.116.0.v20210302-1107.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="swing2swt.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.databinding_1.10.100.v20200926-1123.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.databinding_1.10.100.v20200926-1123.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.databinding.beans_1.7.200.v20210111-0759.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.databinding.beans_1.7.200.v20210111-0759.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.databinding.observable_1.10.0.v20200730-0848.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.databinding.observable_1.10.0.v20200730-0848.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.jface.databinding_1.12.200.v20210111-0911.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.jface.databinding_1.12.200.v20210111-0911.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="commons-lang3-3.12.0.jar">
+		<attributes>
+			<attribute name="module" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.osgi_3.16.200.v20210226-1447.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.osgi_3.16.200.v20210226-1447.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.commands_3.9.800.v20201021-1339.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.commands_3.9.800.v20201021-1339.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.equinox.common_3.14.100.v20210212-1143.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.equinox.common_3.14.100.v20210212-1143.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.equinox.registry_3.10.100.v20210212-1143.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.equinox.registry_3.10.100.v20210212-1143.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.runtime_3.20.100.v20210111-0815.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.runtime_3.20.100.v20210111-0815.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.text_3.11.0.v20210203-1022.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.text_3.11.0.v20210203-1022.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.jface_3.22.100.v20210126-0831.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.jface_3.22.100.v20210126-0831.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.jface.text_3.17.0.v20210213-0904.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.jface.text_3.17.0.v20210213-0904.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.ui.workbench_3.122.100.v20210215-1525.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.ui.workbench_3.122.100.v20210215-1525.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/com.ibm.icu_67.1.0.v20200706-1749.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/com.ibm.icu_67.1.0.v20200706-1749.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.ui.forms_3.11.100.v20210108-1139.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.ui.forms_3.11.100.v20210108-1139.jar"/>
+	<classpathentry kind="lib" path="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.databinding.property_1.8.100.v20200619-0651.jar" sourcepath="C:/Users/ryanc/.p2/pool/plugins/org.eclipse.core.databinding.property_1.8.100.v20200619-0651.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
