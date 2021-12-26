@@ -13,6 +13,7 @@ import java.io.PrintWriter;
 import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 
@@ -25,6 +26,9 @@ public class Learner {
 	int current_vocab_idx = -1;
 	int hint_format = NONE;
 	String current_hint;
+	Vocab current_vocab;
+	
+	byte current_score;
 	
 	boolean ignore_case, ignore_accents, ignore_special;
 	boolean learn_src = true; // false = learn_target
@@ -34,21 +38,29 @@ public class Learner {
 	}
 	
 
+	public void load(String input_file_name) throws IOException, ClassNotFoundException {
+		if(input_file_name.endsWith(".csv")) {
+			loadCSV(input_file_name);
+		}else {
+			loadVocab(input_file_name);
+		}
+	}
+	
 	@SuppressWarnings("unchecked")
-	public void load(String input_file_name) throws ClassNotFoundException, IOException
+	private void loadVocab(String vocab_file_name) throws ClassNotFoundException, IOException
 	{
-		File vocab_file = new File(input_file_name);
+		File vocab_file = new File(vocab_file_name);
 		ObjectInputStream ois = new ObjectInputStream(new FileInputStream(vocab_file));
 		
 		vocab_list = (ArrayList<Vocab>) ois.readObject();
 		ois.close();
 		
-		this.vocab_file_name = input_file_name;
+		this.vocab_file_name = vocab_file_name;
 	}
 	
-	public void loadCSV(String vocab_file_name) throws IOException
+	private void loadCSV(String csv_file_name) throws IOException
 	{
-		File vocab_file = new File(vocab_file_name);
+		File vocab_file = new File(csv_file_name);
 		BufferedReader br = new BufferedReader(new FileReader(vocab_file));
 		
 		int lines = 0;
@@ -65,7 +77,7 @@ public class Learner {
 				vocab_list.add(new Vocab(line.split(",")));
 		}
 		
-		this.vocab_file_name = vocab_file_name;
+		this.vocab_file_name = csv_file_name;
 	}
 	
 	public void save(String output_file_name) throws IOException
@@ -80,6 +92,7 @@ public class Learner {
 	public void reset() 
 	{
 		current_vocab_idx = -1;
+		current_vocab = null;
 	}
 	
 	public void shuffle()
@@ -90,19 +103,23 @@ public class Learner {
 	
 	public String next()
 	{
-		Vocab vocab = nextWord();
+		Vocab vocab = nextVocab();
 		
 		if(vocab == null) return null;
 		
 		return  learn_src ? vocab.source : vocab.target;
 	}
 	
-	public Vocab nextWord()
+	public Vocab nextVocab()
 	{
 		current_hint = null;
 		
-		if(current_vocab_idx != vocab_list.size() - 1)
-			return vocab_list.get(++current_vocab_idx);
+		current_score = 3;
+		
+		if(current_vocab_idx != vocab_list.size() - 1) {
+			current_vocab = vocab_list.get(++current_vocab_idx);
+			return current_vocab;
+		}
 		
 		return null;
 	}
@@ -110,7 +127,7 @@ public class Learner {
 	
 	public String nextHint()
 	{
-		Vocab vocab = vocab_list.get(current_vocab_idx);
+		Vocab vocab = current_vocab;
 		String word_str = learn_src ? vocab.target : vocab.source;
 		if(current_hint == null) {
 			current_hint = StringUtils.repeat("_", learn_src ? word_str.length() : word_str.length());
@@ -175,28 +192,47 @@ public class Learner {
 		return current_hint;
 	}
 	
-	public int compare(String vocab)
+	public boolean submit(String word)
 	{
-		Vocab current_vocab = vocab_list.get(current_vocab_idx);
+		boolean result = (compare(word) == 0);
+		
+		
+		if(result) {
+			 ++current_vocab.session_correct;
+			 current_vocab.last_practiced = new Date();
+			 Stats stats = learn_src ? current_vocab.src_to_tgt : current_vocab.tgt_to_src;
+			 stats.append(current_score);
+			
+		}else {
+			++current_vocab.session_incorrect;
+			if(current_score != 0)
+				--current_score;
+		}
+		
+		return result;
+	}
+	
+	public int compare(String word)
+	{
 		String current = learn_src ? current_vocab.target : current_vocab.source;
 		
 		if(ignore_case) {
-			vocab = vocab.toLowerCase();
+			word = word.toLowerCase();
 			current = current.toLowerCase();
 		}
 		
 		if(ignore_accents) {
-			vocab = StringUtils.stripAccents(vocab);
+			word = StringUtils.stripAccents(word);
 			current = StringUtils.stripAccents(current);
 		}
 		
 		if(ignore_special) {
-			vocab = stripSpecial(vocab);
+			word = stripSpecial(word);
 			current = stripSpecial(current);
 		}
 			
 
-		return vocab.compareTo(current);
+		return word.compareTo(current);
 	}
 	
 	public int compareVocab(Vocab vocab)
@@ -208,8 +244,7 @@ public class Learner {
 	{
 		current_hint = null;
 		learn_src = !learn_src;
-		Vocab vocab = vocab_list.get(current_vocab_idx);
-		return  learn_src ? vocab.source : vocab.target;
+		return  learn_src ? current_vocab.source : current_vocab.target;
 	}
 	
 	public boolean getIgnoreCase() {
@@ -263,6 +298,10 @@ public class Learner {
 
 	public boolean isLoaded() {
 		return vocab_list!= null;
+	}
+	
+	public Vocab getCurrentVocab() {
+		return current_vocab;
 	}
 	
 	private String stripSpecial(String str)

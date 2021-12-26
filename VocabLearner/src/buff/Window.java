@@ -14,7 +14,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.swt.SWT;
@@ -41,6 +44,8 @@ import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.custom.CCombo;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.FocusListener;
 import org.eclipse.swt.events.KeyAdapter;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.ShellAdapter;
@@ -76,7 +81,7 @@ public class Window {
 	private Label SelectedFileLabel2;
 	
 	private Learner learner = new Learner();
-	private String current_word;
+	private Vocab current_vocab;
 	
 	private static Image correct_img = Util.resize(SWTResourceManager.getImage(Window.class, "/images/correct.png"), .25);
 	private static Image incorrect_img = Util.resize(SWTResourceManager.getImage(Window.class, "/images/incorrect.png"), .25);
@@ -171,6 +176,15 @@ public class Window {
 		shell.setLayout(new FillLayout(SWT.HORIZONTAL));
 		
 		tabFolder = new TabFolder(shell, SWT.NONE);
+		tabFolder.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				if(tabFolder.getSelection()[0] == tbtmStats) {
+					refreshStats();
+				}
+			}
+		});
+		
 		
 		tbtmLearn = new TabItem(tabFolder, SWT.NONE);
 		tbtmLearn.setText("Learn");
@@ -253,20 +267,20 @@ public class Window {
 						switch(e.keyCode)
 						{
 							case SWT.Selection:
-								if(current_word == null)
+								if(current_vocab == null)
 									return;
 								
 								String user_guess = TextField.getText();
-								if(learner.compare(user_guess) == 0){
+								if(learner.submit(user_guess)){
 									CorrectLabel.setImage(correct_img);
 									
-									if((current_word = learner.next()) == null) {
+									if((current_vocab = learner.nextVocab()) == null) {
 										System.out.println("Finished set. restarting...");
 										learner.reset();
-										current_word = learner.next();
+										current_vocab = learner.nextVocab();
 									}
 									
-									VocabLabel.setText(current_word);
+									VocabLabel.setText(learner.isLearnSource() ? current_vocab.source : current_vocab.target);
 									HintLabel.setText("");
 								}else {
 									CorrectLabel.setImage(incorrect_img);
@@ -365,14 +379,15 @@ public class Window {
 		tbtmStats.setText("Stats");
 		
 		TableScrollLayer = new ScrolledComposite(tabFolder, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
-		tbtmStats.setControl(TableScrollLayer);
-		TableScrollLayer.setExpandHorizontal(true);
 		TableScrollLayer.setExpandVertical(true);
+		TableScrollLayer.setExpandHorizontal(true);
+		tbtmStats.setControl(TableScrollLayer);
 		
 		TableLayer = new Composite(TableScrollLayer, SWT.NONE);
-		TableLayer.setLayout(new FillLayout(SWT.VERTICAL));
+		TableLayer.setLayout(new GridLayout(1, false));
 		
 		StatsTable = new Table(TableLayer, SWT.BORDER | SWT.FULL_SELECTION);
+		StatsTable.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		StatsTable.setHeaderVisible(true);
 		StatsTable.setLinesVisible(true);
 		
@@ -389,8 +404,8 @@ public class Window {
 		tblclmnLastPracticed.setText("Practiced");
 		
 		tblclmnAttempts = new TableColumn(StatsTable, SWT.NONE);
-		tblclmnAttempts.setWidth(63);
-		tblclmnAttempts.setText("Attempts");
+		tblclmnAttempts.setWidth(55);
+		tblclmnAttempts.setText("Count");
 		
 		tblclmnScores = new TableColumn(StatsTable, SWT.NONE);
 		tblclmnScores.setWidth(100);
@@ -611,44 +626,40 @@ public class Window {
 		LoadLayer.layout(true);
 		
 		try {
-			if(file_path.endsWith(".csv")) {
-				learner.loadCSV(file_path);
-			}else {
-				try {
-					learner.load(file_path);
-					
-				} catch (ClassNotFoundException e) {
-					System.err.println("Couldn't load vocab file. Invalid version/format.");
-				}
-			}
+			learner.load(file_path);
+
 			refreshStats();
-			current_word = learner.next();
-			VocabLabel.setText(current_word);
+			current_vocab = learner.nextVocab();
+			VocabLabel.setText(learner.isLearnSource() ? current_vocab.source : current_vocab.target);
 			HintLabel.setText("");
 			LearnLayer.layout(true);
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		} catch (ClassNotFoundException e){
+			System.err.println("Couldn't load vocab file. Invalid version/format.");
 		}
 	}
 	
 	private void refreshStats()
 	{
+		StatsTable.removeAll();
 		for(Vocab vocab : learner.getVocabList()) {
-			Label l = new Label(TableLayer, SWT.NONE);
 			TableItem item = new TableItem(StatsTable, SWT.NONE);
 			boolean isLearnSource = learner.isLearnSource();
 			if(isLearnSource)
 			{
 				item.setText(0, vocab.source);
 				item.setText(1, vocab.target);
-				item.setText(3, vocab.src_to_tgt.toString());
+				item.setText(3, Integer.toString(vocab.src_to_tgt.getTotalAttempts()));
+				item.setText(4, vocab.src_to_tgt.toString());
 			}else {
 				item.setText(0, vocab.target);
 				item.setText(1, vocab.source);
-				item.setText(3, vocab.tgt_to_src.toString());
+				item.setText(3, Integer.toString(vocab.tgt_to_src.getTotalAttempts()));
+				item.setText(4, vocab.tgt_to_src.toString());
 			}
-			item.setText(2, vocab.last_practiced == null ? "" : vocab.last_practiced.toString());
+			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
+			item.setText(2, vocab.last_practiced == null ? "N/A" : dateFormat.format(vocab.last_practiced));
 		}
 	}
 }
