@@ -3,5 +3,5 @@ pen_size,0
 ignore_case,false
 ignore_accents,false
 ignore_special,false
-hints,0
+hints,1
 vocab,resources\csv\simple.vocab

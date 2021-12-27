@@ -16,6 +16,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -115,14 +118,6 @@ public class Window {
 	private Label HintLabel;
 	private TabItem tbtmStats;
 	private Composite StatsLayer;
-	private ScrolledComposite StatsScrollLayer;
-	private Composite TableLayer;
-	private Table StatsTable;
-	private TableColumn tblclmnSource;
-	private TableColumn tblclmnTarget;
-	private TableColumn tblclmnLastPracticed;
-	private TableColumn tblclmnAttempts;
-	private TableColumn tblclmnScores;
 	private TableColumn sorted_column = null;
 	
 	private static Color RED = new Color(249, 0, 0);
@@ -137,6 +132,15 @@ public class Window {
 	private static Color ORANGE = new Color(255, 128, 0);
 	private static Color DARK_ORANGE = new Color(221, 111, 0);
 
+	private List<Vocab> vocab_list;
+	private String vocab_file_name;
+	private Composite TableLayer;
+	private Table StatsTable;
+	private TableColumn tblclmnSource;
+	private TableColumn tblclmnTarget;
+	private TableColumn tblclmnLastPracticed;
+	private TableColumn tblclmnAttempts;
+	private TableColumn tblclmnScores;
 	
 	/**
 	 * Launch the application.
@@ -176,13 +180,12 @@ public class Window {
 			public void shellClosed(ShellEvent e) {
 				try {
 					
-					String file_name = learner.getVocabFileName();
-					if(file_name != null) {
-						if(!file_name.endsWith(".vocab")) {
-							file_name = file_name.substring(0, file_name.lastIndexOf('.'));
-							file_name += ".vocab";
+					if(vocab_file_name != null) {
+						if(!vocab_file_name.endsWith(".vocab")) {
+							vocab_file_name = vocab_file_name.substring(0, vocab_file_name.lastIndexOf('.'));
+							vocab_file_name += ".vocab";
 						}
-						learner.save(file_name);
+						Util.save(vocab_file_name, vocab_list);
 					}
 					
 					saveSession("session");
@@ -382,13 +385,33 @@ public class Window {
 				if(full_path == null) return;
 				String working_dir = System.getProperty("user.dir");
 				int idx = full_path.indexOf(working_dir);
+				
 				if(idx != -1) {
 					Path p1 = Paths.get(full_path);
 					Path p2 = Paths.get(working_dir);
-					loadVocab(p2.relativize(p1).toString());
-				}else {
-					loadVocab(full_path);
+					full_path = p2.relativize(p1).toString();
 				}
+				
+				if(!full_path.endsWith(".vocab")) {
+					
+					String tmp_path = full_path.substring(0, full_path.lastIndexOf('.'));
+					tmp_path += ".vocab";
+				
+					File file = new File(tmp_path);
+				
+					if(file.exists()) {
+						MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.OK| SWT.CANCEL);
+						dialog.setText("Override File");
+						dialog.setMessage(String.format("Do you really want to override %s?", tmp_path));
+	
+						if(dialog.open() == SWT.OK)
+							for(Vocab vocab : learner.getVocabList()) {
+								vocab.clearStats();
+						}
+					}
+				}
+				
+				loadVocab(full_path);
 			}
 		});
 		SelectFileButton.setText("Select File");
@@ -405,12 +428,8 @@ public class Window {
 		tbtmStats.setControl(StatsLayer);
 		StatsLayer.setLayout(new GridLayout(1, false));
 		
-		StatsScrollLayer = new ScrolledComposite(StatsLayer, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
-		StatsScrollLayer.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
-		StatsScrollLayer.setExpandHorizontal(true);
-		StatsScrollLayer.setExpandVertical(true);
-		
-		TableLayer = new Composite(StatsScrollLayer, SWT.NONE);
+		TableLayer = new Composite(StatsLayer, SWT.NONE);
+		TableLayer.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		TableLayer.setLayout(new GridLayout(1, false));
 		
 		StatsTable = new Table(TableLayer, SWT.BORDER | SWT.FULL_SELECTION);
@@ -419,101 +438,24 @@ public class Window {
 		StatsTable.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		
 		tblclmnSource = new TableColumn(StatsTable, SWT.NONE);
-		tblclmnSource.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				if(sorted_column == tblclmnSource) {
-					sorted_column = null;
-					refreshStats(Comparator.comparing(Vocab::getSource), true);
-				}else {
-					sorted_column = tblclmnSource;
-					refreshStats(Comparator.comparing(Vocab::getSource), false);
-				}
-				
-			}
-		});
-		tblclmnSource.setWidth(103);
+		tblclmnSource.setWidth(112);
 		tblclmnSource.setText("Source");
 		
 		tblclmnTarget = new TableColumn(StatsTable, SWT.NONE);
-		tblclmnTarget.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				if(sorted_column == tblclmnTarget) {
-					sorted_column = null;
-					refreshStats(Comparator.comparing(Vocab::getTarget), true);
-				}else {
-					sorted_column = tblclmnTarget;
-					refreshStats(Comparator.comparing(Vocab::getTarget), false);
-				}
-			}
-		});
-		tblclmnTarget.setWidth(84);
+		tblclmnTarget.setWidth(103);
 		tblclmnTarget.setText("Target");
 		
 		tblclmnLastPracticed = new TableColumn(StatsTable, SWT.NONE);
-		tblclmnLastPracticed.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				if(sorted_column == tblclmnLastPracticed) {
-					sorted_column = null;
-					refreshStats(Comparator.comparing(Vocab::getLastPracticed), true);
-				}else {
-					sorted_column = tblclmnLastPracticed;
-					refreshStats(Comparator.comparing(Vocab::getLastPracticed), false);
-				}
-			}
-		});
-		tblclmnLastPracticed.setWidth(63);
+		tblclmnLastPracticed.setWidth(65);
 		tblclmnLastPracticed.setText("Practiced");
 		
 		tblclmnAttempts = new TableColumn(StatsTable, SWT.NONE);
-		tblclmnAttempts.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				Comparator<Vocab> c = (Vocab v1, Vocab v2) -> {
-					if(learner.isLearnSource())
-						return v1.src_to_tgt.getSubmissions() - v2.src_to_tgt.getSubmissions();
-					else
-						return v1.tgt_to_src.getSubmissions() - v2.tgt_to_src.getSubmissions();
-				};
-				
-				if(sorted_column == tblclmnAttempts) {
-					sorted_column = null;
-					refreshStats(c, true);
-				}else {
-					sorted_column = tblclmnAttempts;
-					refreshStats(c, false);
-				}
-			}
-		});
-		tblclmnAttempts.setWidth(55);
+		tblclmnAttempts.setWidth(49);
 		tblclmnAttempts.setText("Count");
 		
 		tblclmnScores = new TableColumn(StatsTable, SWT.NONE);
-		tblclmnScores.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				Comparator<Vocab> c = (Vocab v1, Vocab v2) -> {
-					if(learner.isLearnSource())
-						return v1.src_to_tgt.getScore() - v2.src_to_tgt.getScore();
-					else
-						return v1.tgt_to_src.getScore() - v2.tgt_to_src.getScore();
-				};
-				
-				if(sorted_column == tblclmnAttempts) {
-					sorted_column = null;
-					refreshStats(c, true);
-				}else {
-					sorted_column = tblclmnAttempts;
-					refreshStats(c, false);
-				}
-			}
-		});
 		tblclmnScores.setWidth(100);
 		tblclmnScores.setText("Scores");
-		StatsScrollLayer.setContent(TableLayer);
-		StatsScrollLayer.setMinSize(TableLayer.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 		
 		tbtmSettings = new TabItem(tabFolder, SWT.NONE);
 		tbtmSettings.setText("Settings");
@@ -727,14 +669,13 @@ public class Window {
 		pw.println("ignore_accents,"+ToggleAccents.getSelection());
 		pw.println("ignore_special,"+ToggleSpecial.getSelection());
 		pw.println("hints,"+ToggleHints.getSelectionIndex());
-		String str = learner.getVocabFileName();
 		
-		if(str != null) {
-			if(!str.endsWith(".vocab")) {
-				str = str.substring(0, str.lastIndexOf('.'));
-				str += ".vocab";
+		if(vocab_file_name != null) {
+			if(!vocab_file_name.endsWith(".vocab")) {
+				vocab_file_name = vocab_file_name.substring(0, vocab_file_name.lastIndexOf('.'));
+				vocab_file_name += ".vocab";
 			}
-			pw.println("vocab,"+str);
+			pw.println("vocab,"+vocab_file_name);
 		}
 		
 		pw.close();
@@ -750,11 +691,14 @@ public class Window {
 		LoadLayer.layout(true);
 		
 		try {
-			if(!learner.load(file_path)) {
+			if((vocab_list = Util.load(file_path)) == null) {
 				System.err.println("Couldn't load vocab");
 				return;
 			}
-
+			
+			learner.setVocabList(vocab_list);
+			vocab_file_name = file_path;
+			
 			refreshStats();
 			current_vocab = learner.nextVocab();
 			VocabLabel.setText(learner.isLearnSource() ? current_vocab.source : current_vocab.target);
@@ -786,7 +730,9 @@ public class Window {
 		StatsTable.removeAll();
 		
 		if(!learner.isLoaded()) return;
-
+		
+		LocalDateTime time_threshold = LocalDateTime.now();
+		
 		for(Vocab vocab : vocab_list) {
 			TableItem item = new TableItem(StatsTable, SWT.NONE);
 			boolean isLearnSource = learner.isLearnSource();
@@ -809,9 +755,11 @@ public class Window {
 				item.setBackground(4, getColor(score));
 			}
 			
-			
-			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
-			item.setText(2, vocab.last_practiced == null ? "N/A" : dateFormat.format(vocab.last_practiced));
+			DateTimeFormatter dateFormater = DateTimeFormatter.ISO_LOCAL_DATE;
+			if(vocab.last_practiced != null && vocab.last_practiced.toLocalDate().equals(time_threshold.toLocalDate()))
+				dateFormater = DateTimeFormatter.ISO_LOCAL_TIME;
+
+			item.setText(2, vocab.last_practiced == null ? "N/A" : vocab.last_practiced.truncatedTo(ChronoUnit.SECONDS).format(dateFormater));
 		}
 	}
 	

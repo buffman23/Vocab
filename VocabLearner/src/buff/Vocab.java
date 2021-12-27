@@ -3,6 +3,9 @@ package buff;
 import java.io.Serializable;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Date;
 
 public class Vocab implements Serializable {
@@ -15,9 +18,9 @@ public class Vocab implements Serializable {
 	public Stats src_to_tgt;
 	public Stats tgt_to_src;
 	public int session_correct, session_incorrect;
-	public Date last_practiced;
+	public LocalDateTime last_practiced;
 	
-	private static SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+	private static DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
 	
 	public Vocab(String[] csv_data)
 	{
@@ -27,8 +30,8 @@ public class Vocab implements Serializable {
 		clearStats();
 		
 		try {
-			last_practiced = sdf.parse(csv_data[4]);
-		} catch (ParseException e) {
+			last_practiced = LocalDateTime.parse(csv_data[4], dtf);
+		} catch(DateTimeParseException e) {
 			last_practiced = null;
 		}
 	}
@@ -71,11 +74,11 @@ public class Vocab implements Serializable {
 		this.tgt_to_src = tgt_to_src;
 	}
 
-	public Date getLastPracticed() {
+	public LocalDateTime getLastPracticed() {
 		return last_practiced;
 	}
 
-	public void setLastPracticed(Date last_practiced) {
+	public void setLastPracticed(LocalDateTime last_practiced) {
 		this.last_practiced = last_practiced;
 	}
 }

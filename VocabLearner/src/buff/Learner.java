@@ -11,6 +11,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.text.Normalizer;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
@@ -20,8 +21,6 @@ import org.apache.commons.lang3.StringUtils;
 public class Learner {
 	public static final int NONE = 0, LEFT_TO_RIGHT = 1, RIGHT_TO_LEFT = 2, IN_TO_OUT = 3, OUT_TO_IN = 4, RANDOM = 5;
 	
-	String vocab_file_name;
-	File vocab_file;
 	List<Vocab> vocab_list;
 	int current_vocab_idx = -1;
 	int hint_format = NONE;
@@ -38,84 +37,12 @@ public class Learner {
 	{
 	}
 	
-
-	public boolean load(String input_file_name) throws IOException, ClassNotFoundException {
-		File file = new File(input_file_name);
-		if(! file.exists()) return false;
-		
-		if(input_file_name.endsWith(".csv")) {
-			loadCSV(input_file_name);
-		}else {
-			loadVocab(input_file_name);
-		}
-		
-		return true;
-	}
-	
-	@SuppressWarnings("unchecked")
-	private void loadVocab(String vocab_file_name) throws ClassNotFoundException, IOException
-	{
-		File vocab_file = new File(vocab_file_name);
-		ObjectInputStream ois = new ObjectInputStream(new FileInputStream(vocab_file));
-		
-		vocab_list = (ArrayList<Vocab>) ois.readObject();
-		ois.close();
-		
-		this.vocab_file_name = vocab_file_name;
-	}
-	
-	private void loadCSV(String csv_file_name) throws IOException
-	{
-		File vocab_file = new File(csv_file_name);
-		BufferedReader br = new BufferedReader(new FileReader(vocab_file));
-		
-		int lines = 0;
-		while(br.readLine() != null) ++lines;
-		
-		vocab_list = new ArrayList<>(lines);
-		
-		br.close();
-		br = new BufferedReader(new FileReader(vocab_file));
-		
-		br.readLine(); // skip header
-		for(String line; (line = br.readLine()) != null;) {
-			if(line.length() > 0)
-				vocab_list.add(new Vocab(line.split(",")));
-		}
-		
-		this.vocab_file_name = csv_file_name;
-	}
-	
-	public void save(String output_file_name) throws IOException
-	{
-		File vocab_file = new File(output_file_name);
-		ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(vocab_file));
-		
-		oos.writeObject(vocab_list);
-		oos.close();
-	}
-	
 	public void reset() 
 	{
 		current_vocab_idx = -1;
 		current_vocab = null;
 		current_hint = null;
 		current_hint_count = 0;
-	}
-	
-	public void shuffle()
-	{
-		Collections.shuffle(vocab_list);
-		reset();
-	}
-	
-	public String next()
-	{
-		Vocab vocab = nextVocab();
-		
-		if(vocab == null) return null;
-		
-		return  learn_src ? vocab.source : vocab.target;
 	}
 	
 	public Vocab nextVocab()
@@ -208,7 +135,7 @@ public class Learner {
 		Stats stats = learn_src ? current_vocab.src_to_tgt : current_vocab.tgt_to_src;
 		if(result) {
 			 ++current_vocab.session_correct;
-			 current_vocab.last_practiced = new Date();
+			 current_vocab.last_practiced = LocalDateTime.now();
 			 stats.addScore(CORRECT_SCORE);
 			 stats.incrementSubmissions();
 			
@@ -298,9 +225,10 @@ public class Learner {
 	public List<Vocab> getVocabList() {
 		return vocab_list; 
 	}
-
-	public String getVocabFileName() {
-		return vocab_file_name;
+	
+	public void setVocabList(List<Vocab> vocab_list){
+		this.vocab_list = vocab_list;
+		reset();
 	}
 
 	public boolean isLoaded() {
