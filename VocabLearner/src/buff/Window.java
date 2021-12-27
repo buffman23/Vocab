@@ -18,6 +18,10 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.List;
+import java.util.function.Function;
 
 import org.apache.commons.lang3.StringUtils;
 import org.eclipse.swt.SWT;
@@ -26,6 +30,7 @@ import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.widgets.Composite;
@@ -55,6 +60,9 @@ import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
+import org.eclipse.swt.layout.FormLayout;
+import org.eclipse.swt.layout.FormData;
+import org.eclipse.swt.layout.FormAttachment;
 
 public class Window {
 
@@ -106,14 +114,29 @@ public class Window {
 	private static volatile int icon_clear_count = 0;
 	private Label HintLabel;
 	private TabItem tbtmStats;
-	private ScrolledComposite TableScrollLayer;
+	private Composite StatsLayer;
+	private ScrolledComposite StatsScrollLayer;
 	private Composite TableLayer;
 	private Table StatsTable;
 	private TableColumn tblclmnSource;
 	private TableColumn tblclmnTarget;
+	private TableColumn tblclmnLastPracticed;
 	private TableColumn tblclmnAttempts;
 	private TableColumn tblclmnScores;
-	private TableColumn tblclmnLastPracticed;
+	private TableColumn sorted_column = null;
+	
+	private static Color RED = new Color(249, 0, 0);
+	private static Color DARK_RED = new Color(215, 0, 0);
+	
+	private static Color GREEN = new Color(0, 255, 128);
+	private static Color DARK_GREEN = new Color(0, 176, 88);
+	
+	private static Color YELLOW = new Color(255, 255, 0);
+	private static Color DARK_YELLOW = new Color(217, 217, 0);
+	
+	private static Color ORANGE = new Color(255, 128, 0);
+	private static Color DARK_ORANGE = new Color(221, 111, 0);
+
 	
 	/**
 	 * Launch the application.
@@ -378,40 +401,119 @@ public class Window {
 		tbtmStats = new TabItem(tabFolder, SWT.NONE);
 		tbtmStats.setText("Stats");
 		
-		TableScrollLayer = new ScrolledComposite(tabFolder, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
-		TableScrollLayer.setExpandVertical(true);
-		TableScrollLayer.setExpandHorizontal(true);
-		tbtmStats.setControl(TableScrollLayer);
+		StatsLayer = new Composite(tabFolder, SWT.NONE);
+		tbtmStats.setControl(StatsLayer);
+		StatsLayer.setLayout(new GridLayout(1, false));
 		
-		TableLayer = new Composite(TableScrollLayer, SWT.NONE);
+		StatsScrollLayer = new ScrolledComposite(StatsLayer, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+		StatsScrollLayer.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		StatsScrollLayer.setExpandHorizontal(true);
+		StatsScrollLayer.setExpandVertical(true);
+		
+		TableLayer = new Composite(StatsScrollLayer, SWT.NONE);
 		TableLayer.setLayout(new GridLayout(1, false));
 		
 		StatsTable = new Table(TableLayer, SWT.BORDER | SWT.FULL_SELECTION);
-		StatsTable.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
-		StatsTable.setHeaderVisible(true);
 		StatsTable.setLinesVisible(true);
+		StatsTable.setHeaderVisible(true);
+		StatsTable.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		
 		tblclmnSource = new TableColumn(StatsTable, SWT.NONE);
+		tblclmnSource.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				if(sorted_column == tblclmnSource) {
+					sorted_column = null;
+					refreshStats(Comparator.comparing(Vocab::getSource), true);
+				}else {
+					sorted_column = tblclmnSource;
+					refreshStats(Comparator.comparing(Vocab::getSource), false);
+				}
+				
+			}
+		});
 		tblclmnSource.setWidth(103);
 		tblclmnSource.setText("Source");
 		
 		tblclmnTarget = new TableColumn(StatsTable, SWT.NONE);
+		tblclmnTarget.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				if(sorted_column == tblclmnTarget) {
+					sorted_column = null;
+					refreshStats(Comparator.comparing(Vocab::getTarget), true);
+				}else {
+					sorted_column = tblclmnTarget;
+					refreshStats(Comparator.comparing(Vocab::getTarget), false);
+				}
+			}
+		});
 		tblclmnTarget.setWidth(84);
 		tblclmnTarget.setText("Target");
 		
 		tblclmnLastPracticed = new TableColumn(StatsTable, SWT.NONE);
+		tblclmnLastPracticed.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				if(sorted_column == tblclmnLastPracticed) {
+					sorted_column = null;
+					refreshStats(Comparator.comparing(Vocab::getLastPracticed), true);
+				}else {
+					sorted_column = tblclmnLastPracticed;
+					refreshStats(Comparator.comparing(Vocab::getLastPracticed), false);
+				}
+			}
+		});
 		tblclmnLastPracticed.setWidth(63);
 		tblclmnLastPracticed.setText("Practiced");
 		
 		tblclmnAttempts = new TableColumn(StatsTable, SWT.NONE);
+		tblclmnAttempts.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				Comparator<Vocab> c = (Vocab v1, Vocab v2) -> {
+					if(learner.isLearnSource())
+						return v1.src_to_tgt.getSubmissions() - v2.src_to_tgt.getSubmissions();
+					else
+						return v1.tgt_to_src.getSubmissions() - v2.tgt_to_src.getSubmissions();
+				};
+				
+				if(sorted_column == tblclmnAttempts) {
+					sorted_column = null;
+					refreshStats(c, true);
+				}else {
+					sorted_column = tblclmnAttempts;
+					refreshStats(c, false);
+				}
+			}
+		});
 		tblclmnAttempts.setWidth(55);
 		tblclmnAttempts.setText("Count");
 		
 		tblclmnScores = new TableColumn(StatsTable, SWT.NONE);
+		tblclmnScores.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				Comparator<Vocab> c = (Vocab v1, Vocab v2) -> {
+					if(learner.isLearnSource())
+						return v1.src_to_tgt.getScore() - v2.src_to_tgt.getScore();
+					else
+						return v1.tgt_to_src.getScore() - v2.tgt_to_src.getScore();
+				};
+				
+				if(sorted_column == tblclmnAttempts) {
+					sorted_column = null;
+					refreshStats(c, true);
+				}else {
+					sorted_column = tblclmnAttempts;
+					refreshStats(c, false);
+				}
+			}
+		});
 		tblclmnScores.setWidth(100);
 		tblclmnScores.setText("Scores");
-		TableScrollLayer.setContent(TableLayer);
-		TableScrollLayer.setMinSize(TableLayer.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		StatsScrollLayer.setContent(TableLayer);
+		StatsScrollLayer.setMinSize(TableLayer.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 		
 		tbtmSettings = new TabItem(tabFolder, SWT.NONE);
 		tbtmSettings.setText("Settings");
@@ -522,6 +624,24 @@ public class Window {
 		ToggleHints.setItems(new String[] {"None", "LeftToRight", "RightToLeft", "InToOut", "OutToIn", "Random"});
 		ToggleHints.select(0);
 		
+		Button btnResetStats = new Button(SettingsLayer, SWT.NONE);
+		btnResetStats.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				
+				MessageBox dialog = new MessageBox(shell, SWT.ICON_QUESTION | SWT.OK| SWT.CANCEL);
+					dialog.setText("Reset Stats");
+					dialog.setMessage("Do you really want to reset stats?");
+
+				if(dialog.open() == SWT.OK)
+					for(Vocab vocab : learner.getVocabList()) {
+						vocab.clearStats();
+				}
+			}
+		});
+		btnResetStats.setText("Reset Stats");
+		new Label(SettingsLayer, SWT.NONE);
+		
 		try {
 			loadSession("session");
 		} catch (IOException e1) {
@@ -579,7 +699,11 @@ public class Window {
 					ToggleHints.notifyListeners(SWT.Selection, new Event());
 					break;
 				case "vocab":
-					loadVocab(split[1]);
+					File file = new File(split[1]);
+					if(file.exists())
+						loadVocab(split[1]);
+					else
+						System.err.println("Couldn't load previous sessions vocab.");
 					break;
 					
 				default:
@@ -626,7 +750,10 @@ public class Window {
 		LoadLayer.layout(true);
 		
 		try {
-			learner.load(file_path);
+			if(!learner.load(file_path)) {
+				System.err.println("Couldn't load vocab");
+				return;
+			}
 
 			refreshStats();
 			current_vocab = learner.nextVocab();
@@ -640,26 +767,88 @@ public class Window {
 		}
 	}
 	
-	private void refreshStats()
+	private void refreshStats(Comparator<Vocab> comp, boolean reverse) {
+		List<Vocab> vocab_list = new ArrayList<Vocab>(learner.getVocabList());
+		
+		if(reverse) 
+			vocab_list.sort(comp.reversed());
+		else
+			vocab_list.sort(comp);
+		refreshStats(vocab_list);
+	}
+	
+	private void refreshStats() {
+		refreshStats(learner.getVocabList());
+	}
+	
+	private void refreshStats(List<Vocab> vocab_list)
 	{
 		StatsTable.removeAll();
-		for(Vocab vocab : learner.getVocabList()) {
+		
+		if(!learner.isLoaded()) return;
+
+		for(Vocab vocab : vocab_list) {
 			TableItem item = new TableItem(StatsTable, SWT.NONE);
 			boolean isLearnSource = learner.isLearnSource();
 			if(isLearnSource)
 			{
 				item.setText(0, vocab.source);
 				item.setText(1, vocab.target);
-				item.setText(3, Integer.toString(vocab.src_to_tgt.getTotalAttempts()));
-				item.setText(4, vocab.src_to_tgt.toString());
+				item.setText(3, Integer.toString(vocab.src_to_tgt.getSubmissions()));
+				
+				byte score = vocab.src_to_tgt.getScore();
+				item.setText(4, Byte.toString(score));
+				item.setBackground(4, getColor(score));
 			}else {
 				item.setText(0, vocab.target);
 				item.setText(1, vocab.source);
-				item.setText(3, Integer.toString(vocab.tgt_to_src.getTotalAttempts()));
-				item.setText(4, vocab.tgt_to_src.toString());
+				item.setText(3, Integer.toString(vocab.tgt_to_src.getSubmissions()));
+				
+				byte score = vocab.tgt_to_src.getScore();
+				item.setText(4, Byte.toString(score));
+				item.setBackground(4, getColor(score));
 			}
+			
+			
 			DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd");
 			item.setText(2, vocab.last_practiced == null ? "N/A" : dateFormat.format(vocab.last_practiced));
 		}
+	}
+	
+	public Color getColor(byte score) {
+		Color begin, end;
+		float denom;
+		
+		if(score < Stats.MAX_SCORE*.25) {
+			begin = DARK_RED;
+			end = RED;
+			denom = Stats.MAX_SCORE*.25f;
+		}else if(score < Stats.MAX_SCORE*.5) {
+			begin = RED;
+			end = ORANGE;
+			denom = Stats.MAX_SCORE*.5f;
+		}else if(score < Stats.MAX_SCORE*.75) {
+			begin = ORANGE;
+			end = YELLOW;
+			denom = Stats.MAX_SCORE*.75f;
+		}else {
+			begin = YELLOW;
+			end = GREEN;
+			denom = Stats.MAX_SCORE;
+		}
+		
+		float blending = score / denom;
+
+		float inverse_blending = 1 - blending;
+
+		int red = (int)Math.round(end.getRed() * blending + begin.getRed() * inverse_blending);
+		int green = (int)Math.round(end.getGreen() * blending + begin.getGreen() * inverse_blending);
+		int blue =  (int)Math.round(end.getBlue()  * blending + begin.getBlue()  * inverse_blending);
+
+		//note that if i pass float values they have to be in the range of 0.0-1.0 
+		//and not in 0-255 like the ones i get returned by the getters.
+		Color blended = new Color (red, green, blue);
+		
+		return blended;
 	}
 }

@@ -8,83 +8,68 @@ public class Stats implements Serializable {
 	 */
 	private static final long serialVersionUID = 1L;
 
+	public static final byte MAX_SCORE = 100;
 	/*
 	 * history: bit field representing correct or incorrect vocab submissions
 	 * every 2 bits represents a submission score 0-3.
 	 * LSB is most recent submission
 	 * 
 	 */
-	private long history;
+	private byte score;
 	
-	private int total_attempts;
+	private int submissions;
 	
 	public Stats() {
-		this(0, 0);
+		this((byte)0, 0);
 	}
 	
-	public Stats(int history, int total_attempts)
+	public Stats(byte score, int submissions)
 	{
-		this.history = history;
-		this.total_attempts = total_attempts;
+		this.score = score;
+		this.submissions = submissions;
 	}
 
+	public void addScore(int i) {
+		addScore((byte)i);
+	}
 	
-
-
-
-	public void append(byte b)
+	public void addScore(byte b)
 	{
-		// b can't be greater than 2 bits
-		if(b > 0b11)
-			b = 0b11;
-		history <<= 2;
-		history |= b;
+		if(b >= 0) {
+			if(b + score < MAX_SCORE)
+				score += b;
+			else
+				score = MAX_SCORE;
+		}else {
+			if(b + score > 0)
+				score += b;
+			else
+				score = 0;
+		}
 		
-		++total_attempts;
+	}
+	
+	public void setScore(byte b) {
+		this.score = b;
 	}
 	
 	public void clear()
 	{
-		history = 0;
-		total_attempts = 0;
+		score = 0;
+		submissions = 0;
 	}
 	
-	public byte[] getScores(int most_recent)
+	public byte getScore()
 	{
-		long number = history;
-		byte[] scores = new byte[most_recent];
-		
-	    for (int i = 0; i < most_recent && number != 0; ++i) {
-	        
-	        byte score = (byte)(number & 0b11);
-	        scores[i] += score;
-	        
-	        number >>= 2L;
-	    }
-	    return scores;
+	    return score;
 	}
 	
-	public byte[] getScores() {
-		return getScores(Long.SIZE/2);
+	public int getSubmissions() {
+	    return submissions;
 	}
 	
-	public int getTotalAttempts() {
-	    return total_attempts;
-	}
-	
-	public String toString()
+	public void incrementSubmissions()
 	{
-		byte[] scores = getScores(total_attempts < Long.SIZE ? total_attempts : Long.SIZE);
-		StringBuilder sb = new StringBuilder();
-		sb.append('[');
-		for(int i = 0; i < scores.length - 1; ++i) {
-			sb.append(scores[i]);
-			sb.append(", ");
-		}
-		if(scores.length > 0)
-			sb.append(scores[scores.length -1 ]);
-		sb.append(']');
-		
-		return sb.toString();
+		++submissions;
 	}
 }

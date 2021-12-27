@@ -26,9 +26,10 @@ public class Learner {
 	int current_vocab_idx = -1;
 	int hint_format = NONE;
 	String current_hint;
+	int current_hint_count;
 	Vocab current_vocab;
 	
-	byte current_score;
+	public static int CORRECT_SCORE = 10, INCORRECT_SCORE = -4;
 	
 	boolean ignore_case, ignore_accents, ignore_special;
 	boolean learn_src = true; // false = learn_target
@@ -38,12 +39,17 @@ public class Learner {
 	}
 	
 
-	public void load(String input_file_name) throws IOException, ClassNotFoundException {
+	public boolean load(String input_file_name) throws IOException, ClassNotFoundException {
+		File file = new File(input_file_name);
+		if(! file.exists()) return false;
+		
 		if(input_file_name.endsWith(".csv")) {
 			loadCSV(input_file_name);
 		}else {
 			loadVocab(input_file_name);
 		}
+		
+		return true;
 	}
 	
 	@SuppressWarnings("unchecked")
@@ -93,6 +99,8 @@ public class Learner {
 	{
 		current_vocab_idx = -1;
 		current_vocab = null;
+		current_hint = null;
+		current_hint_count = 0;
 	}
 	
 	public void shuffle()
@@ -113,9 +121,8 @@ public class Learner {
 	public Vocab nextVocab()
 	{
 		current_hint = null;
-		
-		current_score = 3;
-		
+		current_hint_count = 0;
+
 		if(current_vocab_idx != vocab_list.size() - 1) {
 			current_vocab = vocab_list.get(++current_vocab_idx);
 			return current_vocab;
@@ -189,6 +196,8 @@ public class Learner {
 		sb.setCharAt(idx, word_str.charAt(idx));
 		current_hint = sb.toString();
 		
+		++current_hint_count;
+		
 		return current_hint;
 	}
 	
@@ -196,17 +205,15 @@ public class Learner {
 	{
 		boolean result = (compare(word) == 0);
 		
-		
+		Stats stats = learn_src ? current_vocab.src_to_tgt : current_vocab.tgt_to_src;
 		if(result) {
 			 ++current_vocab.session_correct;
 			 current_vocab.last_practiced = new Date();
-			 Stats stats = learn_src ? current_vocab.src_to_tgt : current_vocab.tgt_to_src;
-			 stats.append(current_score);
+			 stats.addScore(CORRECT_SCORE);
+			 stats.incrementSubmissions();
 			
 		}else {
-			++current_vocab.session_incorrect;
-			if(current_score != 0)
-				--current_score;
+			stats.addScore(INCORRECT_SCORE - current_hint_count);
 		}
 		
 		return result;
