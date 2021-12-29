@@ -6,4 +6,5 @@ module VocabLearner {
 	requires org.eclipse.jface.databinding;
 	requires swing2swt;
 	requires org.apache.commons.lang3;
+	requires java.base;
 }

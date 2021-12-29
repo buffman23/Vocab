@@ -8,32 +8,32 @@ public class Stats implements Serializable {
 	 */
 	private static final long serialVersionUID = 1L;
 
-	public static final byte MAX_SCORE = 100;
+	public static final double MAX_SCORE = 100;
 	/*
-	 * history: bit field representing correct or incorrect vocab submissions
+	 * history: bit field representing correct or incorrect vocab attempts
 	 * every 2 bits represents a submission score 0-3.
 	 * LSB is most recent submission
 	 * 
 	 */
-	private byte score;
+	private double score;
 	
-	private int submissions;
+	private int attempts;
 	
 	public Stats() {
-		this((byte)0, 0);
+		this((double)0, 0);
 	}
 	
-	public Stats(byte score, int submissions)
+	public Stats(double score, int attempts)
 	{
 		this.score = score;
-		this.submissions = submissions;
+		this.attempts = attempts;
 	}
 
 	public void addScore(int i) {
-		addScore((byte)i);
+		addScore((double)i);
 	}
 	
-	public void addScore(byte b)
+	public void addScore(double b)
 	{
 		if(b >= 0) {
 			if(b + score < MAX_SCORE)
@@ -49,27 +49,31 @@ public class Stats implements Serializable {
 		
 	}
 	
-	public void setScore(byte b) {
+	public void setScore(double b) {
 		this.score = b;
 	}
 	
 	public void clear()
 	{
 		score = 0;
-		submissions = 0;
+		attempts = 0;
 	}
 	
-	public byte getScore()
+	public double getScore()
 	{
 	    return score;
 	}
 	
-	public int getSubmissions() {
-	    return submissions;
+	public int getAttempts() {
+	    return attempts;
 	}
 	
-	public void incrementSubmissions()
+	public void setAttempts(int attempts) {
+		this.attempts = attempts;
+	}
+	
+	public void incrementAttempts()
 	{
-		++submissions;
+		++attempts;
 	}
 }

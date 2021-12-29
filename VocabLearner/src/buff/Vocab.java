@@ -1,12 +1,8 @@
 package buff;
 
 import java.io.Serializable;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
-import java.util.Date;
 
 public class Vocab implements Serializable {
 	/**
@@ -15,31 +11,55 @@ public class Vocab implements Serializable {
 	private static final long serialVersionUID = 1L;
 	public String source, target;
 
-	public Stats src_to_tgt;
-	public Stats tgt_to_src;
+	public Stats stats_src;
+	public Stats stats_tgt;
 	public int session_correct, session_incorrect;
 	public LocalDateTime last_practiced;
 	
+	public static String csv_header = "source,target,last_practiced,attempts_src,score_src,attempts_tgt,score_tgt";
+	public static String simple_csv_header = "source,target";
+	
 	private static DateTimeFormatter dtf = DateTimeFormatter.ISO_DATE_TIME;
 	
-	public Vocab(String[] csv_data)
+	public Vocab(String[] header, String[] csv_data)
 	{
-		source = csv_data[0];
-		target = csv_data[1];
-		
 		clearStats();
-		
-		try {
-			last_practiced = LocalDateTime.parse(csv_data[4], dtf);
-		} catch(DateTimeParseException e) {
-			last_practiced = null;
+		for(int i = 0; i < header.length; ++i) {
+			switch(header[i]) {
+				case "source":
+					this.source = csv_data[i];
+					break;
+				case "target":
+					this.target = csv_data[i];
+					break;
+				case "last_practiced":
+					if(!csv_data[i].equals("null"))
+						this.last_practiced = LocalDateTime.parse(csv_data[i], dtf);
+					break;
+				case "attempts_src":
+					int attempts = Integer.parseInt(csv_data[i]);
+					this.stats_src.setAttempts(attempts);
+					break;
+				case "score_src":
+					double score = Double.parseDouble(csv_data[i]);
+					this.stats_src.setScore(score);
+					break;
+				case "attempts_tgt":
+					attempts = Integer.parseInt(csv_data[i]);
+					this.stats_tgt.setAttempts(attempts);
+					break;
+				case "score_tgt":
+					score = Double.parseDouble(csv_data[i]);
+					this.stats_tgt.setScore(score);
+					break;
+			}
 		}
 	}
 	
 	public void clearStats()
 	{
-		src_to_tgt = new Stats();
-		tgt_to_src = new Stats();
+		stats_src = new Stats();
+		stats_tgt = new Stats();
 	}
 	
 	public String getSource() {
@@ -58,20 +78,20 @@ public class Vocab implements Serializable {
 		this.target = target;
 	}
 
-	public Stats getSrc_to_tgt() {
-		return src_to_tgt;
+	public Stats getStatsSrc() {
+		return stats_src;
 	}
 
-	public void setSrc_to_tgt(Stats src_to_tgt) {
-		this.src_to_tgt = src_to_tgt;
+	public void setStatsSrc(Stats stats_src) {
+		this.stats_src = stats_src;
 	}
 
-	public Stats getTgt_to_src() {
-		return tgt_to_src;
+	public Stats getStatsTgt() {
+		return stats_tgt;
 	}
 
-	public void setTgt_to_src(Stats tgt_to_src) {
-		this.tgt_to_src = tgt_to_src;
+	public void setStatsTgt(Stats stats_tgt) {
+		this.stats_tgt = stats_tgt;
 	}
 
 	public LocalDateTime getLastPracticed() {
@@ -80,5 +100,55 @@ public class Vocab implements Serializable {
 
 	public void setLastPracticed(LocalDateTime last_practiced) {
 		this.last_practiced = last_practiced;
+	}
+	
+	public void swapSrcTgt()
+	{
+		String tmp = this.source;
+		this.source = this.target;
+		this.target = tmp;
+		
+		Stats tmp_stat = this.stats_src;
+		this.stats_src = this.stats_tgt;
+		this.stats_tgt = tmp_stat;
+	}
+	
+	public void appendToCSV(StringBuilder sb) {
+		sb.append(this.source);
+		sb.append(',');
+		sb.append(this.target);
+		sb.append(',');
+		sb.append(this.last_practiced);
+		sb.append(',');
+		sb.append(this.stats_src.getAttempts());
+		sb.append(',');
+		sb.append(this.stats_src.getScore());
+		sb.append(',');
+		sb.append(this.stats_tgt.getAttempts());
+		sb.append(',');
+		sb.append(this.stats_tgt.getScore());
+	}
+	
+	public boolean equals(Object other)
+	{
+		if(!(other instanceof Vocab))
+			return super.equals(other);
+		
+		Vocab v = (Vocab)other;
+		
+		String ts = this.source.toLowerCase();
+		String tt = this.target.toLowerCase();
+		String os = v.source.toLowerCase();
+		String ot = v.target.toLowerCase();
+		
+		if(ts.equals(os) && tt.equals(ot)) {
+			return true;
+		}
+		
+		if(ts.equals(ot) && tt.equals(os)) {
+			return true;
+		}
+		
+		return false;
 	}
 }
