@@ -1,28 +1,13 @@
 source,target,last_practiced,attempts_src,score_src,attempts_tgt,score_tgt
-present; current,actual,2021-12-28T22:18:27.697500300,1,2.1073093649624544,7,14.064867658385989
-art,el/la arte,2021-12-28T22:18:35.302189500,1,2.1073093649624544,8,16.858474919699635
-to sing,cantar,2021-12-28T22:18:30.088189400,1,2.1073093649624544,7,13.926521825293042
-to; at,a,null,0,0.0,0,0.0
-down; downstairs; below,abajo,null,0,0.0,0,0.0
+"to, at",a,2021-12-29T11:33:15.789564100,0,0.0,0,0.0
+"down, downstairs, below",abajo,2021-12-29T13:05:04.389425500,8,14.0,0,0.0
 fan (to move air),el abanico,null,0,0.0,0,0.0
 open,abierto,null,0,0.0,0,0.0
-to embrace,abrazar,2021-12-28T22:18:17.108481800,0,0.0,8,12.579641163793926
-embrace; hug,el abrazo,null,0,0.0,0,0.0
-overcoat,el abrigo,2021-12-28T22:18:03.478552900,0,0.0,10,17.51542613781313
+to embrace,abrazar,null,0,0.0,0,0.0
+"embrace, hug",el abrazo,null,0,0.0,0,0.0
+overcoat,el abrigo,null,0,0.0,0,0.0
 to open,abrir,null,0,0.0,0,0.0
 here,acá,null,0,0.0,0,0.0
 to finish,acabar,null,0,0.0,0,0.0
-action,la acción,null,0,0.0,0,0.0
-to accept,aceptar,null,0,0.0,0,0.0
-about,acerca de,null,0,0.0,0,0.0
-to approach,acercarse,null,0,0.0,0,0.0
-to accompany; go with,acompañar,null,0,0.0,0,0.0
-to advise,aconsejar,null,0,0.0,0,0.0
-to remember,acordarse,null,0,0.0,0,0.0
-to go to bed,acostarse,null,0,0.0,0,0.0
-agreement,el acuerdo,null,0,0.0,0,0.0
-although,aunque,2021-12-28T22:17:49.715747600,0,0.0,8,15.7571395240696
-to dance,bailar,2021-12-28T22:17:54.391239900,0,0.0,8,15.505510356681777
-wedding,la boda,2021-12-28T22:17:56.924941400,0,0.0,8,14.643856189774725
-street,la calle,2021-12-28T22:17:59.284549600,0,0.0,10,16.97718952310806
-T-shirt; undershirt,la camiseta,2021-12-28T22:17:43.306073500,0,0.0,8,16.191808253032967
+"(pl) restroom, toilets",los aseos,null,0,0.0,0,0.0
+"T-shirt, undershirt",la camiseta,null,0,0.0,0,0.0

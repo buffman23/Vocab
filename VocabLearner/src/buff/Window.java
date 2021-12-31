@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 
@@ -40,6 +41,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.Point;
 import org.eclipse.wb.swt.SWTResourceManager;
 import org.eclipse.swt.widgets.Canvas;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -47,10 +49,16 @@ import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.events.MouseAdapter;
 import org.eclipse.swt.events.MouseEvent;
 import org.eclipse.swt.custom.CCombo;
+import org.eclipse.swt.events.FocusEvent;
+import org.eclipse.swt.events.FocusListener;
 import org.eclipse.swt.events.KeyAdapter;
 import org.eclipse.swt.events.KeyEvent;
 import org.eclipse.swt.events.ShellAdapter;
 import org.eclipse.swt.events.ShellEvent;
+import org.eclipse.swt.events.TraverseEvent;
+import org.eclipse.swt.events.TraverseListener;
+import org.eclipse.swt.events.VerifyEvent;
+import org.eclipse.swt.events.VerifyListener;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.TableItem;
@@ -60,8 +68,24 @@ import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.ExpandBar;
+import org.eclipse.swt.widgets.ExpandItem;
+import org.eclipse.swt.widgets.TrayItem;
+import org.eclipse.swt.widgets.CoolBar;
+import org.eclipse.swt.widgets.CoolItem;
+import org.eclipse.core.databinding.DataBindingContext;
+import org.eclipse.core.databinding.observable.value.IObservableValue;
+import org.eclipse.jface.databinding.swt.WidgetProperties;
+import org.eclipse.core.databinding.beans.PojoProperties;
+import org.eclipse.core.databinding.observable.Realm;
+import org.eclipse.jface.databinding.swt.SWTObservables;
+import org.eclipse.core.databinding.UpdateValueStrategy;
+import org.eclipse.swt.custom.ScrolledComposite;
+import org.eclipse.swt.events.MouseTrackAdapter;
+import java.util.HashSet;
 
 public class Window {
+	private DataBindingContext m_bindingContext;
 
 	protected Shell shell;
 	private TabFolder tabFolder;
@@ -74,7 +98,8 @@ public class Window {
 	private Text TextField;
 	private Canvas canvas;
 	private TabItem tbtmSettings;
-	private Composite SettingsLayer;
+	private Composite SettingsLeftLayer;
+	private Composite SettingsTopLayer;
 	private Button EraserButton;
 	private CCombo PenFontCombo;
 	private Label Settings_InkCanvas_Label;
@@ -121,6 +146,8 @@ public class Window {
 	private List<Vocab> deleted_vocab;
 	private List<Runnable> undo_list = new LinkedList<Runnable>();
 	private boolean shuffle_vocab = false;
+	private List<TextPair> macro_widgets = new ArrayList<TextPair>();
+	private HashMap<String, String> macros = new HashMap<String, String>();
 	
 	private static Color RED = new Color(249, 0, 0);
 	private static Color DARK_RED = new Color(215, 0, 0);
@@ -134,6 +161,7 @@ public class Window {
 	private static Color ORANGE = new Color(255, 128, 0);
 	private static Color DARK_ORANGE = new Color(221, 111, 0);
 
+	private TabItem previous_tab;
 	private List<Vocab> vocab_list;
 	private String vocab_file_name;
 	private Composite TableLayer;
@@ -158,6 +186,7 @@ public class Window {
 	private Button btnLogin;
 	private Composite SignupLinkLayer;
 	private Link CALink;
+	private ScrolledComposite MacroScrollLayer;
 	private Composite CreateAccountFieldsLayer;
 	private Composite UsernameLayer_1;
 	private Label CAUsernameField_1;
@@ -173,7 +202,7 @@ public class Window {
 	private Link LoginLink;
 	private Label LErrorLabel;
 	private Button btnLogout;
-	
+	private Display display;
 	private User user;
 	private Group SettingsUserGroup;
 	private Table LoadTable;
@@ -211,19 +240,31 @@ public class Window {
 	private MenuItem mntmUndo;
 	private Label lblShuffleOrder;
 	private Button ToggleShuffle;
+	private Label SettingsDelimitersLabel;
+	private Text SettingsDelimitersField;
+	private Button btnMacros;
+	private Composite SettingsRightLayer;
+	private Composite MacroButtonsLayer;
+	private Button btnAdd;
+	private Composite MacroListLayer;
 	
 	/**
 	 * Launch the application.
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		System.setProperty("file.encoding", "UTF-8");
-		try {
-			Window window = new Window();
-			window.open();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		Display display = Display.getDefault();
+		Realm.runWithDefault(SWTObservables.getRealm(display), new Runnable() {
+			public void run() {
+				System.setProperty("file.encoding", "UTF-8");
+				try {
+					Window window = new Window();
+					window.open();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		});
 	}
 
 	/**
@@ -246,6 +287,8 @@ public class Window {
 	 * Create contents of the window.
 	 */
 	protected void createContents() {
+		display = Display.getCurrent();
+		
 		shell = new Shell();
 		shell.addShellListener(new ShellAdapter() {
 			@Override
@@ -298,6 +341,19 @@ public class Window {
 				}else if(tabFolder.getSelection()[0] == tbtmLearn) {
 					refreshLearnTab();
 				}
+				
+				if(previous_tab == tbtmSettings) {
+					if(SettingsDelimitersField != null)
+						practice_set.setDelimiters(SettingsDelimitersField.getText());
+					
+					macros.clear();
+					for(TextPair tp : macro_widgets) {
+						if(tp.getCheckBox().getSelection())
+							macros.put(tp.getText1().getText(), tp.getText2().getText());
+					}
+				}
+				
+				previous_tab = tabFolder.getSelection()[0];
 			}
 		});
 		
@@ -420,9 +476,7 @@ public class Window {
 										HintLabel.setText(hint);
 								}else {
 									CorrectLabel.setImage(incorrect_img);
-									System.out.println("Incorrect");
 									String hint = practice_set.nextHint();
-									System.out.println(hint);
 									if(hint != null)
 										HintLabel.setText(hint);
 								}
@@ -439,7 +493,26 @@ public class Window {
 								
 								LearnLayer.layout(true);
 								TextInLayer.layout(true);
-								break;
+								
+								return;
+						}
+						
+						if(e.keyCode != SWT.ARROW_LEFT && e.keyCode != SWT.ARROW_RIGHT && e.keyCode != SWT.ARROW_UP && e.keyCode != SWT.ARROW_DOWN) {
+							int idx = TextField.getSelection().x;
+							String txt = TextField.getText();
+					
+							for (Map.Entry<String,String> entry : macros.entrySet()) {
+								String key = entry.getKey();
+								String value = entry.getValue();
+								if(txt.substring(0, idx).contains(key)) {
+									String replacement =  macros.get(key);
+									TextField.setText(txt.replaceFirst(key, replacement));
+								  
+									TextField.setSelection(idx + value.length() - key.length());
+									break;
+								}
+							
+							}
 						}
 					}
 				});
@@ -739,7 +812,7 @@ public class Window {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				Comparator<Vocab> c = (Vocab v1, Vocab v2) -> {
-					return v1.source.compareTo(v2.source);
+					return v1.source.toLowerCase().compareTo(v2.source.toLowerCase());
 				};
 				
 				if(load_sorted_column == tblclmnSource_1) {
@@ -759,7 +832,7 @@ public class Window {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				Comparator<Vocab> c = (Vocab v1, Vocab v2) -> {
-					return v1.target.compareTo(v2.target);
+					return v1.target.toLowerCase().compareTo(v2.target.toLowerCase());
 				};
 				
 				if(load_sorted_column == tblclmnTarget_1) {
@@ -867,7 +940,7 @@ public class Window {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				Comparator<Vocab> c = (Vocab v1, Vocab v2) -> {
-					return v1.source.compareTo(v2.source);
+					return v1.source.toLowerCase().compareTo(v2.source.toLowerCase());
 				};
 				
 				if(stats_sorted_column == tblclmnSource) {
@@ -887,7 +960,7 @@ public class Window {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				Comparator<Vocab> c = (Vocab v1, Vocab v2) -> {
-					return v1.target.compareTo(v2.target);
+					return v1.target.toLowerCase().compareTo(v2.target.toLowerCase());
 				};
 				
 				if(stats_sorted_column == tblclmnTarget) {
@@ -1054,16 +1127,19 @@ public class Window {
 		tbtmSettings = new TabItem(tabFolder, SWT.NONE);
 		tbtmSettings.setText("Settings");
 		
-		SettingsLayer = new Composite(tabFolder, SWT.NONE);
+		SettingsTopLayer = new Composite(tabFolder, SWT.NONE);
+		SettingsTopLayer.setLayout(new FillLayout(SWT.HORIZONTAL));
+		tbtmSettings.setControl(SettingsTopLayer);
 		
-		tbtmSettings.setControl(SettingsLayer);
-		SettingsLayer.setLayout(new GridLayout(2, false));
+		SettingsLeftLayer = new Composite(SettingsTopLayer, SWT.NONE);
 		
-		Settings_InkCanvas_Label = new Label(SettingsLayer, SWT.NONE);
+		SettingsLeftLayer.setLayout(new GridLayout(2, false));
+		
+		Settings_InkCanvas_Label = new Label(SettingsLeftLayer, SWT.NONE);
 		Settings_InkCanvas_Label.setToolTipText("Use canvas to draw/write input instead of keyboard input");
 		Settings_InkCanvas_Label.setText("Ink Canvas");
 		
-		ToggleInkCanvas = new Button(SettingsLayer, SWT.CHECK);
+		ToggleInkCanvas = new Button(SettingsLeftLayer, SWT.CHECK);
 		ToggleInkCanvas.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
@@ -1078,11 +1154,11 @@ public class Window {
 			}
 		});
 		
-		Settings_PenSize_Label = new Label(SettingsLayer, SWT.NONE);
+		Settings_PenSize_Label = new Label(SettingsLeftLayer, SWT.NONE);
 		Settings_PenSize_Label.setToolTipText("Change thickness of pen stroke");
 		Settings_PenSize_Label.setText("Pen Size");
 		
-		PenFontCombo = new CCombo(SettingsLayer, SWT.BORDER);
+		PenFontCombo = new CCombo(SettingsLeftLayer, SWT.BORDER);
 		PenFontCombo.setEditable(false);
 		PenFontCombo.setEnabled(false);
 		PenFontCombo.setToolTipText("Select pencil thickness");
@@ -1090,11 +1166,11 @@ public class Window {
 		PenFontCombo.setItems(new String[] {"4", "8", "10", "12", "14", "16"});
 		PenFontCombo.select(0);
 		
-		Settings_Ignore_Case_Label = new Label(SettingsLayer, SWT.NONE);
+		Settings_Ignore_Case_Label = new Label(SettingsLeftLayer, SWT.NONE);
 		Settings_Ignore_Case_Label.setToolTipText("Ignore Case, like 'a' and 'A'  are treated the same");
 		Settings_Ignore_Case_Label.setText("Ignore Case");
 		
-		ToggleCase = new Button(SettingsLayer, SWT.CHECK);
+		ToggleCase = new Button(SettingsLeftLayer, SWT.CHECK);
 		ToggleCase.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
@@ -1102,11 +1178,11 @@ public class Window {
 			}
 		});
 		
-		Settings_Ignore_Accents_Label = new Label(SettingsLayer, SWT.NONE);
+		Settings_Ignore_Accents_Label = new Label(SettingsLeftLayer, SWT.NONE);
 		Settings_Ignore_Accents_Label.setToolTipText("Ignore Accents, like 'o' and '\u00F6' are treated the same");
 		Settings_Ignore_Accents_Label.setText("Ignore Accents");
 		
-		ToggleAccents = new Button(SettingsLayer, SWT.CHECK);
+		ToggleAccents = new Button(SettingsLeftLayer, SWT.CHECK);
 		ToggleAccents.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
@@ -1114,11 +1190,11 @@ public class Window {
 			}
 		});
 		
-		Settings_Ignore_Special_Label = new Label(SettingsLayer, SWT.NONE);
+		Settings_Ignore_Special_Label = new Label(SettingsLeftLayer, SWT.NONE);
 		Settings_Ignore_Special_Label.setToolTipText("Ignore non-aplha chars, like '!@#$%^&*()-_~'");
 		Settings_Ignore_Special_Label.setText("Ignore Special");
 		
-		ToggleSpecial = new Button(SettingsLayer, SWT.CHECK);
+		ToggleSpecial = new Button(SettingsLeftLayer, SWT.CHECK);
 		ToggleSpecial.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
@@ -1126,23 +1202,23 @@ public class Window {
 			}
 		});
 		
-		lblShuffleOrder = new Label(SettingsLayer, SWT.NONE);
+		lblShuffleOrder = new Label(SettingsLeftLayer, SWT.NONE);
 		lblShuffleOrder.setToolTipText("Shuffle the loaded vocab set each round");
 		lblShuffleOrder.setText("Shuffle");
 		
-		ToggleShuffle = new Button(SettingsLayer, SWT.CHECK);
+		ToggleShuffle = new Button(SettingsLeftLayer, SWT.CHECK);
 		ToggleShuffle.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				shuffle_vocab = true;
+				shuffle_vocab = ToggleShuffle.getSelection();
 			}
 		});
 		
-		Settings_Hints_Label = new Label(SettingsLayer, SWT.NONE);
+		Settings_Hints_Label = new Label(SettingsLeftLayer, SWT.NONE);
 		Settings_Hints_Label.setToolTipText("Give progreesively more hints with every failed attempt");
 		Settings_Hints_Label.setText("Hints");
 		
-		ToggleHints = new CCombo(SettingsLayer, SWT.BORDER);
+		ToggleHints = new CCombo(SettingsLeftLayer, SWT.BORDER);
 		ToggleHints.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
@@ -1163,7 +1239,36 @@ public class Window {
 		ToggleHints.setItems(new String[] {"None", "LeftToRight", "RightToLeft", "InToOut", "OutToIn", "Random"});
 		ToggleHints.select(0);
 		
-		SettingsUserGroup = new Group(SettingsLayer, SWT.NONE);
+		SettingsDelimitersLabel = new Label(SettingsLeftLayer, SWT.NONE);
+		SettingsDelimitersLabel.setToolTipText("Delimiters are characters which separate words. \r\nDelimiters will allow multiple answers to a vocab submission\r\nEx: Source=hola, Target=\"hello, hi\", Delimiters=,\r\n      Both hello and hi can be submitted as correct asnwers");
+		SettingsDelimitersLabel.setText("Delimiters");
+		
+		SettingsDelimitersField = new Text(SettingsLeftLayer, SWT.BORDER);
+
+		GridData gd_SettingsDelimitersField = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
+		gd_SettingsDelimitersField.widthHint = 80;
+		SettingsDelimitersField.setLayoutData(gd_SettingsDelimitersField);
+		SettingsDelimitersField.addVerifyListener(new VerifyListener() {
+			
+			@Override
+			public void verifyText(VerifyEvent e) {
+				for(char c  : e.text.toCharArray()) {
+					if(c == ']' || c == '[')
+						e.doit = false;
+						return;
+				}
+					
+				
+			}
+			
+		});
+		
+		btnMacros = new Button(SettingsLeftLayer, SWT.TOGGLE);
+		
+		btnMacros.setText("Open Macros");
+		new Label(SettingsLeftLayer, SWT.NONE);
+		
+		SettingsUserGroup = new Group(SettingsLeftLayer, SWT.NONE);
 		SettingsUserGroup.setLayout(new GridLayout(3, false));
 		SettingsUserGroup.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 2, 1));
 		SettingsUserGroup.setText("username");
@@ -1236,6 +1341,62 @@ public class Window {
 			}
 		});
 		btnLogout.setText("Logout");
+		
+		SettingsRightLayer = new Composite(SettingsTopLayer, SWT.NONE);
+		SettingsRightLayer.setLayout(new StackLayout());
+		
+		Composite MacroBindingLayer = new Composite(SettingsRightLayer, SWT.NONE);
+		MacroBindingLayer.setLayout(new GridLayout(1, false));
+		
+		btnMacros.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				StackLayout sl = ((StackLayout)SettingsRightLayer.getLayout());
+				if(sl.topControl != MacroBindingLayer) {
+					sl.topControl = MacroBindingLayer;
+					btnMacros.setText("Close Macros");
+				}else {
+					sl.topControl = null;
+					btnMacros.setText("Open Macros");
+				}
+				SettingsRightLayer.layout(true);
+			}
+		});
+		
+		MacroScrollLayer = new ScrolledComposite(MacroBindingLayer, SWT.BORDER | SWT.H_SCROLL | SWT.V_SCROLL);
+		GridData gd_MacroScrollLayer = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
+		gd_MacroScrollLayer.widthHint = 203;
+		MacroScrollLayer.setLayoutData(gd_MacroScrollLayer);
+		MacroScrollLayer.setExpandHorizontal(true);
+		MacroScrollLayer.setExpandVertical(true);
+		
+		MacroListLayer = new Composite(MacroScrollLayer, SWT.NONE);
+		MacroListLayer.setLayout(new GridLayout(1, false));
+		MacroScrollLayer.setContent(MacroListLayer);
+		MacroScrollLayer.setMinSize(MacroListLayer.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		
+		MacroButtonsLayer = new Composite(MacroBindingLayer, SWT.NONE);
+		MacroButtonsLayer.setLayout(new GridLayout(1, false));
+		
+		btnAdd = new Button(MacroButtonsLayer, SWT.NONE);
+		btnAdd.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				addMacroEntry(null ,null, false);
+			}
+		});
+		GridData gd_btnAdd = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
+		gd_btnAdd.widthHint = 60;
+		btnAdd.setLayoutData(gd_btnAdd);
+		btnAdd.setText("Add");
+		
+		Composite QuickKeyboardBindingLayer = new Composite(SettingsRightLayer, SWT.NONE);
+		QuickKeyboardBindingLayer.setLayout(new FillLayout(SWT.HORIZONTAL));
+		((StackLayout)SettingsRightLayer.getLayout()).topControl = QuickKeyboardBindingLayer;
+		QuickKeyboardBindingLayer.layout(true);
+		QuickKeyboardBindingLayer.getParent().layout(true);
+		QuickKeyboardBindingLayer.getParent().getParent().layout(true);
+
 		
 		LoginLayer = new Composite(shell, SWT.NONE);
 		LoginLayer.setLayout(new GridLayout(3, false));
@@ -1573,6 +1734,7 @@ public class Window {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
+		m_bindingContext = initDataBindings();
 		
 		/*
 		Thread auto_save_thread = new Thread(() -> {
@@ -1599,6 +1761,46 @@ public class Window {
 		gd_CorrectLabel.widthHint = 32;
 	}
 	
+	public void addMacroEntry(String str1, String str2, boolean selected) {
+		TextPair tp = new TextPair(MacroListLayer, SWT.NONE);
+		macro_widgets.add(tp);
+		
+		if(selected)
+			macros.put(str1, str2);
+		
+		tp.getCheckBox().setSelection(selected);
+		
+		tp.getDeleteLabel().addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseUp(MouseEvent e) {
+				if(tp.isMouseOver()) {
+					tp.dispose();
+					MacroListLayer.layout(true);
+					macro_widgets.remove(tp);
+				}
+			}
+		});
+		
+		GridData gridData = new GridData();
+	    gridData.grabExcessHorizontalSpace = true;
+	    gridData.horizontalAlignment = GridData.FILL;
+	    tp.setLayoutData(gridData);
+	    
+	    if(str1 == null && str2 == null) {
+	    	tp.getText1().setText("/command");
+	    	tp.getText2().setText("result");
+	    }else {
+	    	tp.getText1().setText(str1);
+	    	tp.getText2().setText(str2);
+	    }
+		
+		MacroListLayer.layout(true);
+		MacroScrollLayer.setMinSize(MacroListLayer.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		
+		
+		
+	}
+	
 	public void loadSession(String session_file_name) throws IOException
 	{
 		
@@ -1607,7 +1809,7 @@ public class Window {
 		BufferedReader br = new BufferedReader(new FileReader(session_file));
 		
 		for(String line = null; (line = br.readLine()) != null;) {
-			String[] split = line.split(",");
+			String[] split = Util.parseCSV(line);
 			switch(split[0])
 			{
 				case "username":
@@ -1651,6 +1853,12 @@ public class Window {
 					ToggleHints.select(i);
 					ToggleHints.notifyListeners(SWT.Selection, new Event());
 					break;
+				case "delimiters":
+					if(split.length > 1)
+						SettingsDelimitersField.setText(split[1]);
+						practice_set.setDelimiters(split[1]
+								);
+					break;
 				case "vocab":
 					File file = new File(split[1]);
 					if(file.exists()) {
@@ -1682,6 +1890,12 @@ public class Window {
 						LoadToField.setText(split[4]);
 					}
 					break;
+					
+				case "macro":
+					boolean selected = Boolean.parseBoolean(split[3]);
+					addMacroEntry(split[1], split[2], selected);
+					break;
+					
 				default:
 					System.err.println("Unrecognized config in session file:" + split[0]);
 					break;
@@ -1704,9 +1918,15 @@ public class Window {
 		pw.println("ignore_special,"+ToggleSpecial.getSelection());
 		pw.println("shuffle,"+ToggleShuffle.getSelection());
 		pw.println("hints,"+ToggleHints.getSelectionIndex());
+		String delimiters = practice_set.getDelimiters();
+		pw.printf("delimiters,\"%s\"\n", delimiters == null ? "" : delimiters);
 		pw.println(String.format("load_from,%s,%s",LoadOptionsCombo.getSelectionIndex(),loaded_file_name));
 		pw.println(String.format("load_selection,%s,%s,%s,%s",LoadSelectVocabCombo.getSelectionIndex(), LoadCountField.getText(),
 				LoadFromField.getText(), LoadToField.getText()));
+		
+		for(TextPair tp : macro_widgets) {
+			pw.println(String.format("macro,%s,%s,%b", tp.getText1().getText(),tp.getText2().getText(), tp.getCheckBox().getSelection()));
+		}
 
 		if(vocab_file_name != null)
 			pw.println("vocab,"+vocab_file_name);
@@ -1864,5 +2084,10 @@ public class Window {
 		Color blended = new Color (red, green, blue);
 		
 		return blended;
+	}
+	protected DataBindingContext initDataBindings() {
+		DataBindingContext bindingContext = new DataBindingContext();
+		//
+		return bindingContext;
 	}
 }

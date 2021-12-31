@@ -114,9 +114,22 @@ public class Vocab implements Serializable {
 	}
 	
 	public void appendToCSV(StringBuilder sb) {
-		sb.append(this.source);
+		if(this.source.contains(",")) {
+			sb.append('"');
+			sb.append(this.source);
+			sb.append('"');
+		}else {
+			sb.append(this.source);
+		}
+		
 		sb.append(',');
-		sb.append(this.target);
+		if(this.target.contains(",")) {
+			sb.append('"');
+			sb.append(this.target);
+			sb.append('"');
+		}else {
+			sb.append(this.target);
+		}
 		sb.append(',');
 		sb.append(this.last_practiced);
 		sb.append(',');
